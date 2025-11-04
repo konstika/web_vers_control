@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  app:
+    restart: always
+    build:
+      context: app
+      dockerfile: Dockerfile
+    container_name: app_container
+    ports:
+      - '8080:80'
+    volumes:
+      - ./app:/var/www/html/app
+    depends_on:
+      - db
+    environment:
+      APACHE_DOCUMENT_ROOT: /var/www/html/app/public
+      PHP_SESSION_SAVE_HANDLER: redis
+      PHP_SESSION_SAVE_PATH: "tcp://redis:6379"
+  db:
+    restart: always
+    build:
+      context: db
+      dockerfile: Dockerfile
+    container_name: db_vers_container
+    ports:
+      - '3306:3306'
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+

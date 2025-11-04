@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteBase /
+# Запрос существующих файлов и директорий
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Перенаправление всех остальных запросов на public/index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
