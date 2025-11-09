@@ -9,18 +9,11 @@ spl_autoload_register(function ($class_name) {
     }
 });
 
-// Конфигурация БД
-define('DB_HOST', 'db');
-define('DB_NAME', 'vers_control_DB');
-define('DB_USER', 'user');
-define('DB_PASS', 'password');
+define('PROJECT_STORAGE_ROOT', __DIR__ . '/../../project_storage/');
 
 //Определение маршрутов
 $routes = [
     // [Метод, URL (Regex), 'Контроллер@Метод']
-
-    // Главная
-    ['GET', '/', 'ProjectController@index'],
 
     // Аутентификация
     ['GET', '/register', 'UserController@showRegister'],
@@ -29,10 +22,25 @@ $routes = [
     ['POST', '/login', 'UserController@login'],
     ['GET', '/logout', 'UserController@logout'],
 
-    // (Будущие) Маршруты для проектов
-    // ['GET', '/project/new', 'ProjectController@create'],
-    // ['POST', '/project/store', 'ProjectController@store'],
-    // ['GET', '/project/(\d+)', 'ProjectController@show'], // (\d+) - id
+    // Страница с проектами
+    ['GET', '/', 'ProjectController@index'],
+    ['GET', '/project/new', 'ProjectController@new'],
+    ['POST', '/project/create', 'ProjectController@create'],
+    ['GET', '/project/(\d+)', 'ProjectController@show'],
+    ['GET', '/project/(\d+)/edit', 'ProjectController@edit'],
+    ['POST', '/project/(\d+)/update', 'ProjectController@update'],
+    ['POST', '/project/(\d+)/delete', 'ProjectController@delete'],
+
+    // Управление версиями
+    ['GET', '/project/(\d+)/version/new', 'VersionProjectController@new'],
+    ['POST', '/project/(\d+)/version/create', 'VersionProjectController@create'],
+    ['GET', '/project/(\d+)/version/(\d+)', 'VersionProjectController@show'],
+    ['POST', '/project/(\d+)/version/(\d+)/upload-file', 'VersionProjectController@upload'],
+    ['POST', '/project/(\d+)/version/(\d+)/download-all', 'VersionProjectController@downloadAll'],
+    ['GET', '/project/(\d+)/version/(\d+)/edit', 'VersionProjectController@edit'],
+    ['POST', '/project/(\d+)/version/(\d+)/update', 'VersionProjectController@update'],
+    ['POST', '/project/(\d+)/version/(\d+)/delete', 'VersionProjectController@delete'],
+    ['POST', '/project/(\d+)/version/(\d+)/delete-file', 'VersionProjectController@deleteFile'],
 ];
 $router = new Core\Router($routes);
 $router->dispatch();

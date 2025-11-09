@@ -2,6 +2,380 @@
 
 namespace Controller;
 
-class VersionProjectController {
+class VersionProjectController extends Controller
+{
+
+     //Отображение формы для создания новой версии
+    public function new(int $id_project)
+    {
+        $userId = $this->authenticate();
+        $projectModel = $this->model('Project');
+        $project = $projectModel->getProjectById($id_project);
+        if (!$project) {
+            header("Location: /dashboard");
+            exit;
+        }
+        $data = [
+            'id_project' => $id_project,
+            'project_name' => $project['name'],
+            'message' => '',
+            'description' => ''
+        ];
+        $this->view('project/version/new', $data);
+    }
+
+     //Обработка POST-запроса для создания новой версии
+    public function create(int $id_project)
+    {
+        $userId = $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $projectModel = $this->model('Project');
+        $project = $projectModel->getProjectById($id_project);
+        if (!$project) {
+            header("Location: /dashboard");
+            exit;
+        }
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        if (empty($name)) {
+            $error = "Название версии не может быть пустым.";
+            $data = [
+                'id_project' => $id_project,
+                'project_name' => $project['name'],
+                'name' => $name,
+                'description' => $description,
+                'error' => $error
+            ];
+            $this->view('project/version/new', $data);
+            return;
+        }
+
+        $projectPath = $project['path'];
+        $versionPath = $projectPath . uniqid();
+        if (!mkdir($versionPath, 0777, true)) {
+            $error = "Не удалось создать директорию для новой версии.";
+            $this->view('project/version/new', compact('id_project', 'project', 'name', 'description', 'error'));
+            return;
+        }
+        $versionData = [
+            'id_project'  => $id_project,
+            'name'        => $name,
+            'path'        => $versionPath,
+            'description' => $description,
+        ];
+        $versionModel = $this->model('VersionProject');
+        if ($versionModel->createVersion($userId, $versionData)) {
+            header("Location: /project/{$id_project}");
+        } else {
+            error_log("Failed to save version to DB. Deleting directory: " . $versionPath);
+            rmdir($versionPath);
+            $error = "Ошибка при сохранении версии в базе данных.";
+            $data = [
+                'id_project' => $id_project,
+                'project_name' => $project['name'],
+                'name' => $name,
+                'description' => $description,
+                'error' => $error
+            ];
+            $this->view('project/version/new', $data);
+        }
+        exit;
+    }
+
+
+
+    //Отображение страницы с деталями конкретной версии и файловым менеджером
+    public function show(int $id_project, int $id_version)
+    {
+        $userId = $this->authenticate();
+        $projectModel = $this->model('Project');
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $project = $projectModel->getProjectById($id_project);
+        $files = $this->getFilesInVersionDirectory($version['path']);
+        $data = [
+            'project' => $project,
+            'version' => $version,
+            'files' => $files,
+        ];
+        $this->view('project/version/view', $data);
+    }
+
+
+    //Отображение формы редактирования конкретной версии
+    public function edit(int $id_project, int $id_version)
+    {
+        $this->authenticate();
+        $versionModel = $this->model('VersionProject');
+        $projectModel = $this->model('Project');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        $project = $projectModel->getProjectById($id_project);
+        if (!$version || !$project) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $data = [
+            'version' => $version,
+            'projectName' => $project['name'],
+        ];
+        $this->view('project/version/edit', $data);
+    }
+
+
+     //Обрабатка POST-запроса для обновления версии
+    public function update(int $id_project, int $id_version)
+    {
+        $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: /project/{$id_project}/version/{$id_version}/edit");
+            exit;
+        }
+        $versionModel = $this->model('VersionProject');
+        $projectModel = $this->model('Project');
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        $project = $projectModel->getProjectById($id_project);
+        if (!$version || !$project) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+
+        //Проверка данных
+        if (empty($name)) {
+            $error = "Название версии не может быть пустым.";
+            $data = [
+                'version' => $version,
+                'projectName' => $project['name'],
+                'error' => $error,
+            ];
+            $this->view('project/version/edit', $data);
+            return;
+        }
+
+        // Обновление
+        $updateData = [
+            'name' => $name,
+            'description' => $description,
+        ];
+        if ($versionModel->updateVersion($id_version, $updateData)) {
+            header("Location: /project/{$id_project}/version/{$id_version}"); // Успех: на страницу просмотра версии
+        } else {
+            $error = "Ошибка при сохранении изменений версии.";
+            $data = [
+                'version' => $version,
+                'projectName' => $project['name'],
+                'error' => $error,
+            ];
+            $this->view('project/version/edit', $data);
+        }
+        exit;
+    }
+
+
+    //Обрабатка POST-запроса для удаления версии
+    public function delete(int $id_project, int $id_version)
+    {
+        $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $versionPath = $version['path'];
+
+        //Удаление записи из базы данных
+        if ($versionModel->deleteVersion($id_version, $id_project)) {
+            //Удаление директории
+            if (is_dir($versionPath)) {
+                $this->rmdir_recursive($versionPath);
+            }
+            header("Location: /project/{$id_project}");
+        } else {
+            header("Location: /project/{$id_project}");
+        }
+        exit;
+    }
+
+
+    //Вспомогательная функция для рекурсивного удаления непустой директории
+    private function rmdir_recursive(string $dir): bool
+    {
+        if (!is_dir($dir)) {
+            return false;
+        }
+        $items = array_diff(scandir($dir), array('.', '..'));
+        foreach ($items as $item) {
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path)) {
+                $this->rmdir_recursive($path);
+            } else {
+                unlink($path);
+            }
+        }
+        return rmdir($dir);
+    }
+
+
+    //-----------------------------СОДЕРЖИМОЕ ВЕРСИИ--------------------------------------
+    //Получение содержимого директории версии
+    private function getFilesInVersionDirectory(string $versionPath): array
+    {
+        // Вспомогательная функция для форматирования размера файла в KB, MB, GB
+        $formatSize = function ($bytes) {
+            if ($bytes === 0) {
+                return '0 B';
+            }
+            $sizes = ['B', 'KB', 'MB', 'GB'];
+            $i = floor(log($bytes, 1024));
+            return round($bytes / (1024 ** $i), 2) . ' ' . $sizes[$i];
+        };
+        $items = [];
+        if (!is_dir($versionPath)) {
+            error_log("Version directory not found: " . $versionPath);
+            return $items;
+        }
+        $scan = scandir($versionPath);
+        if ($scan === false) {
+            error_log("Failed to scan directory: " . $versionPath);
+            return $items;
+        }
+        foreach ($scan as $item) {
+            if ($item === '.' || $item === '..') {continue;}// Пропускаем служебные ссылки
+            $fullPath = rtrim($versionPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $item;
+            $isDir = is_dir($fullPath);
+            $size = '';
+            if (!$isDir) {
+                $bytes = filesize($fullPath);
+                if ($bytes !== false) {$size = $formatSize($bytes);}
+                else {$size = 'N/A';}// Не удалось получить размер
+            } else {$size = 'Папка';}
+            $items[] = [
+                'name' => $item,
+                'path' => $fullPath,
+                'is_dir' => $isDir,
+                'size' => $size,
+            ];
+        }
+        return $items;
+    }
+
+
+    //Обработка POST-запроса для загрузки файлов
+    public function upload(int $id_project, int $id_version)
+    {
+        $userId = $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['file']['name'][0])) {
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $baseUploadPath = rtrim($version['path'], DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $filesArray = $this->rearrangeFilesArray($_FILES['file']);
+        $uploadedCount = 0;
+        $errorCount = 0;
+        $failedFiles = [];
+        foreach ($filesArray as $file) {
+            // Пропускаем элемент, если загрузка была неудачной (например, слишком большой файл)
+            if ($file['error'] !== UPLOAD_ERR_OK) {continue;}
+            $relativePath = $file['full_path'] ?? basename($file['name']);
+            $relativePath = trim(str_replace(['..', './'], '', $relativePath), '/');
+            if (empty($relativePath)) continue; // Пропускаем пустой путь
+
+            // Имя файла (без пути)
+            $fileName = basename($relativePath);
+            // Директория для размещения файла
+            $targetDir = dirname($baseUploadPath . $relativePath);
+            // Создание директории, если она не существует
+            if (!is_dir($targetDir)) {
+                if (!mkdir($targetDir, 0777, true)) {
+                    error_log("Failed to create directory: " . $targetDir);
+                    $errorCount++;
+                    $failedFiles[] = htmlspecialchars($relativePath . " (Не удалось создать папку)");
+                    continue;
+                }
+            }
+
+            //Определение конечного пути и перемещение файла
+            $destination = rtrim($targetDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
+            if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $uploadedCount++;
+            } else {
+                $errorCount++;
+                $failedFiles[] = htmlspecialchars($relativePath . " (Ошибка перемещения)");
+            }
+        }
+        header("Location: /project/{$id_project}/version/{$id_version}");
+        exit;
+    }
+
+    //Вспомогательный метод для преобразования $_FILES['file'] в массив отдельных файлов
+    private function rearrangeFilesArray(array $file_post): array
+    {
+        $file_arr = [];
+        $file_keys = array_keys($file_post);
+        if (is_array($file_post['name'])) {
+            $file_count = count($file_post['name']);
+            for ($i = 0; $i < $file_count; $i++) {
+                foreach ($file_keys as $key) {
+                    $file_arr[$i][$key] = $file_post[$key][$i];
+                }
+            }
+        } else {$file_arr[] = $file_post;}
+        return $file_arr;
+    }
+
+
+    //Удаление файла/папки из версии
+    public function deleteFile(int $id_project, int $id_version)
+    {
+        $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['item_path'])) {
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+        $itemPath = trim($_POST['item_path']);
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $versionPath = rtrim($version['path'], DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (strpos($itemPath, $versionPath) !== 0) {
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+
+        $itemName = basename($itemPath);
+        if (is_dir($itemPath)) {
+            // Удаляем папку (рекурсивно)
+            $this->rmdir_recursive($itemPath);
+        } elseif (is_file($itemPath)) {
+            // Удаляем файл
+            unlink($itemPath);
+        }
+        header("Location: /project/{$id_project}/version/{$id_version}");
+        exit;
+    }
+
 
 }

@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS version_project (
     description TEXT,
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES user(id_user),
     FOREIGN KEY (id_project) REFERENCES project(id_project)
     );

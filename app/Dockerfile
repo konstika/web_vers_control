@@ -11,4 +11,6 @@ RUN pecl install redis \
 
 RUN chown -R www-data:www-data /var/www/html
 
+COPY upload_settings.ini /usr/local/etc/php/conf.d/upload_settings.ini
+
 EXPOSE 80

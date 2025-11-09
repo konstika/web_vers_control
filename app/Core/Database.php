@@ -8,10 +8,11 @@ use PDOException;
 class Database {
     private static $instance = null;
     private $conn;
-    private $host = DB_HOST;
-    private $db_name = DB_NAME;
-    private $username = DB_USER;
-    private $password = DB_PASS;
+    private $host = 'db';
+    private $db_name = 'vers_control_DB';
+    private $username = 'user';
+    private $password = 'password';
+
 
     private function __construct() {
         $dsn = 'mysql:host=' . $this->host . ';dbname=' . $this->db_name;

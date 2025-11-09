@@ -28,4 +28,14 @@ abstract class Controller {
             die("Представление '$viewName' не найдено.");
         }
     }
+
+    //Проверка авторизации
+    protected function authenticate()
+    {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        return $_SESSION['user_id'];
+    }
 }
