@@ -70,4 +70,6 @@ $versions = $versions ?? [];
         </div>
 
     <?php endif; ?>
+
+    <?php require_once 'history.php'; ?>
 </div>

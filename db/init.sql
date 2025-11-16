@@ -2,6 +2,7 @@ CREATE DATABASE IF NOT EXISTS vers_control_DB;
 CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'password';
 GRANT SELECT,UPDATE,INSERT,DELETE ON vers_control_DB.* TO 'user'@'%';
 FLUSH PRIVILEGES;
+SET time_zone = '+03:00';
 
 USE vers_control_DB;
 CREATE TABLE IF NOT EXISTS user (

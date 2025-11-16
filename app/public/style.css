@@ -236,9 +236,7 @@ main {
 .empty-state {
     text-align: center;
     padding: 2.5rem;
-    border: 2px dashed #d1d5db;
-    border-radius: 0.5rem;
-    background-color: #f9fafb;
+    border: none;
 }
 .empty-state svg {
     margin-left: auto;
@@ -352,6 +350,7 @@ main {
     font-weight: 800;
     color: #111827;
     margin-bottom: 0;
+    word-break: break-word;
 }
 
 .project-actions-group {
@@ -373,6 +372,7 @@ main {
 .project-description-text {
     color: #4b5563;
     white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .section-title-versions {
@@ -406,8 +406,8 @@ main {
 }
 
 .version-card {
-    display: flex; /* !!! ВАЖНОЕ ИЗМЕНЕНИЕ: включаем flex */
-    flex-direction: row; /* !!! ВАЖНОЕ ИЗМЕНЕНИЕ: все в одну строку */
+    display: flex;
+    flex-direction: row;
     align-items: center;
     padding: 1rem;
     background-color: #fff;
@@ -417,6 +417,7 @@ main {
     transition: all 0.2s;
     margin-bottom: 0.75rem;
     width: 100%;
+    box-sizing: border-box;
 }
 .version-card:hover {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -490,6 +491,8 @@ main {
 .version-actions-group {
     display: flex;
     gap: 0.75rem;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .version-description-panel {
@@ -590,4 +593,59 @@ main {
     padding: 1.5rem;
     color: #9ca3af;
     font-size: 0.9rem;
+}
+
+
+/* ------------------- history.php) ------------------- */
+
+.history-list {
+    margin-top: 1rem;
+}
+
+.history-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed #e5e7eb; /* Легкий разделитель */
+    color: #4b5563; /* Основной текст */
+    font-size: 0.9375rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-item-context {
+    font-weight: 600;
+    color: #4f46e5; /* Синий цвет для контекста (Проект/Версия) */
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.history-item-description {
+    flex-grow: 1;
+    word-break: break-word;
+    margin-right: 1rem;
+}
+
+.history-item-date {
+    font-size: 0.875rem;
+    color: #6b7280;
+    flex-shrink: 0; /* Чтобы дата не сжималась */
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* Класс для отображения ID в заголовках */
+.id-tag {
+    background-color: #e5e7eb; /* Серый фон */
+    color: #4b5563; /* Темно-серый текст */
+    padding: 0.1rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    display: inline-block;
 }

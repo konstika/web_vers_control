@@ -8,7 +8,7 @@ spl_autoload_register(function ($class_name) {
         require_once $file;
     }
 });
-
+date_default_timezone_set('Europe/Moscow');
 define('PROJECT_STORAGE_ROOT', __DIR__ . '/../../project_storage/');
 
 //Определение маршрутов

@@ -48,7 +48,15 @@ class ProjectController  extends Controller {
         }
         $data['path'] = $projectPath;
 
-        if ($projectModel->createProject($userId, $data)) {
+        if ($newProjectId = $projectModel->createProject($userId, $data)) {
+            // Создание записи истории
+            $historyModel = $this->model('History');
+            $historyModel->createHistoryRecord(
+                $newProjectId,
+                null,
+                "Проект '{$data['name']}' был создан.",
+                $userId
+            );
             header('Location: /'); // Перенаправление на список проектов
         } else {
             // В случае ошибки БД, удаляем созданную директорию
@@ -103,7 +111,30 @@ class ProjectController  extends Controller {
         }
 
         if ($projectModel->updateProject($id_project, $data)) {
-            header('Location: /');
+            // Создание записи истории
+            $changes = "";
+            $oldName = $project['name'];
+            $oldDescription = $project['description'] ?? '';
+            $newName = $data['name'];
+            $newDescription = $data['description'] ?? '';
+            if ($oldName !== $newName) {
+                $changes .= "Название изменено с '".$oldName." на '".$newName."'.";
+            }
+            if ($oldDescription !== $newDescription) {
+                $changes .= "Описание было изменено.";
+            }
+            if ($changes != "") {
+                $description = "Обновление проекта '{$newName}': ".$changes;
+                $historyModel = $this->model('History');
+                $historyModel->createHistoryRecord(
+                    $id_project,
+                    null,
+                    $description,
+                    $userId
+                );
+            }
+
+            header("Location: /project/{$id_project}");
         } else {
             header("Location: /project/{$id_project}/edit");
         }
@@ -144,9 +175,14 @@ class ProjectController  extends Controller {
         }
         $versionModel = $this->model('VersionProject');
         $versions = $versionModel->getVersionsByProjectId($id_project);
+
+        $historyModel = $this->model('History');
+        $versionHistory = $historyModel->getProjectHistory($id_project);
         $this->view('project/view', [
             'project' => $project,
-            'versions' => $versions
+            'versions' => $versions,
+            'historyData' => $versionHistory,
+            'isProjectView' => true,
         ]);
     }
 }

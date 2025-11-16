@@ -22,6 +22,7 @@ class Database {
         ];
         try {
             $this->conn = new PDO($dsn, $this->username, $this->password, $options);
+            $this->conn->exec("SET time_zone = '+03:00';");
         } catch (PDOException $e) {
             die('Ошибка подключения: ' . $e->getMessage());
         }

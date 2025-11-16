@@ -67,7 +67,16 @@ class VersionProjectController extends Controller
             'description' => $description,
         ];
         $versionModel = $this->model('VersionProject');
-        if ($versionModel->createVersion($userId, $versionData)) {
+        if ($newVersionId = $versionModel->createVersion($userId, $versionData)) {
+
+            // Создание записи истории
+            $historyModel = $this->model('History');
+            $historyModel->createHistoryRecord(
+                $id_project,
+                $newVersionId,
+                "Создана новая версия: '{$name}'.",
+                $userId
+            );
             header("Location: /project/{$id_project}");
         } else {
             error_log("Failed to save version to DB. Deleting directory: " . $versionPath);
@@ -100,10 +109,15 @@ class VersionProjectController extends Controller
         }
         $project = $projectModel->getProjectById($id_project);
         $files = $this->getFilesInVersionDirectory($version['path']);
+
+        $historyModel = $this->model('History');
+        $versionHistory = $historyModel->getVersionHistory($id_project, $id_version);
         $data = [
             'project' => $project,
             'version' => $version,
             'files' => $files,
+            'historyData' => $versionHistory,
+            'isProjectView' => false,
         ];
         $this->view('project/version/view', $data);
     }
@@ -132,7 +146,7 @@ class VersionProjectController extends Controller
      //Обрабатка POST-запроса для обновления версии
     public function update(int $id_project, int $id_version)
     {
-        $this->authenticate();
+        $userId = $this->authenticate();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header("Location: /project/{$id_project}/version/{$id_version}/edit");
             exit;
@@ -167,6 +181,30 @@ class VersionProjectController extends Controller
             'description' => $description,
         ];
         if ($versionModel->updateVersion($id_version, $updateData)) {
+            // Запись в историю
+            $changes = "";
+            $oldName = $version['name'];
+            $oldDescription = $version['description'] ?? '';
+            $newName = $updateData['name'];
+            $newDescription = $updateData['description'] ?? '';
+            if ($oldName !== $newName) {
+                $changes .= "Название изменено с '".$oldName." на '".$newName."'.";
+            }
+            if ($oldDescription !== $newDescription) {
+                $changes .= "Описание было изменено.";
+            }
+            if ($changes != "") {
+                $description = "Обновление версии '{$newName}': " . $changes;
+
+            $historyModel = $this->model('History');
+            $historyModel->createHistoryRecord(
+                $id_project,
+                $id_version,
+                $description,
+                $userId
+            );
+            }
+
             header("Location: /project/{$id_project}/version/{$id_version}"); // Успех: на страницу просмотра версии
         } else {
             $error = "Ошибка при сохранении изменений версии.";
@@ -184,7 +222,7 @@ class VersionProjectController extends Controller
     //Обрабатка POST-запроса для удаления версии
     public function delete(int $id_project, int $id_version)
     {
-        $this->authenticate();
+        $userId = $this->authenticate();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header("Location: /project/{$id_project}");
             exit;
@@ -196,6 +234,7 @@ class VersionProjectController extends Controller
             exit;
         }
         $versionPath = $version['path'];
+        $versionName = $version['name'];
 
         //Удаление записи из базы данных
         if ($versionModel->deleteVersion($id_version, $id_project)) {
@@ -203,6 +242,15 @@ class VersionProjectController extends Controller
             if (is_dir($versionPath)) {
                 $this->rmdir_recursive($versionPath);
             }
+
+            // Создание записи истории
+            $historyModel = $this->model('History');
+            $historyModel->createHistoryRecord(
+                $id_project,
+                $id_version,
+                "Удалена версия: '{$versionName}'.",
+                $userId
+            );
             header("Location: /project/{$id_project}");
         } else {
             header("Location: /project/{$id_project}");
@@ -292,6 +340,8 @@ class VersionProjectController extends Controller
         $filesArray = $this->rearrangeFilesArray($_FILES['file']);
         $uploadedCount = 0;
         $errorCount = 0;
+        $firstItemName = '';
+        $firstItemType = '';
         $failedFiles = [];
         foreach ($filesArray as $file) {
             // Пропускаем элемент, если загрузка была неудачной (например, слишком большой файл)
@@ -306,6 +356,7 @@ class VersionProjectController extends Controller
             $targetDir = dirname($baseUploadPath . $relativePath);
             // Создание директории, если она не существует
             if (!is_dir($targetDir)) {
+                $itemType = 'folder';
                 if (!mkdir($targetDir, 0777, true)) {
                     error_log("Failed to create directory: " . $targetDir);
                     $errorCount++;
@@ -323,6 +374,18 @@ class VersionProjectController extends Controller
                 $failedFiles[] = htmlspecialchars($relativePath . " (Ошибка перемещения)");
             }
         }
+
+        if ($uploadedCount > 0) {
+            // Создание записи истории
+            $historyModel = $this->model('History');
+            $historyModel->createHistoryRecord(
+                $id_project,
+                $id_version,
+                "Загружено {$uploadedCount} файлов/папок в версию: '{$version['name']}'.",
+                $userId
+            );
+        }
+
         header("Location: /project/{$id_project}/version/{$id_version}");
         exit;
     }
@@ -347,7 +410,7 @@ class VersionProjectController extends Controller
     //Удаление файла/папки из версии
     public function deleteFile(int $id_project, int $id_version)
     {
-        $this->authenticate();
+        $userId = $this->authenticate();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['item_path'])) {
             header("Location: /project/{$id_project}/version/{$id_version}");
             exit;
@@ -369,10 +432,21 @@ class VersionProjectController extends Controller
         if (is_dir($itemPath)) {
             // Удаляем папку (рекурсивно)
             $this->rmdir_recursive($itemPath);
+            $description = "Удалена папка: '{$itemName}'.";
         } elseif (is_file($itemPath)) {
             // Удаляем файл
             unlink($itemPath);
+            $description = "Удален файл: '{$itemName}'.";
         }
+        // Создание записи истории
+        $historyModel = $this->model('History');
+        $historyModel->createHistoryRecord(
+            $id_project,
+            $id_version,
+            $description,
+            $userId
+        );
+
         header("Location: /project/{$id_project}/version/{$id_version}");
         exit;
     }
@@ -408,7 +482,7 @@ class VersionProjectController extends Controller
         $zip->close();
 
         // Отправка файла на скачивание
-        $this->downloadFileResponse($zipFileName, "{$versionName}_files.zip");
+        $this->downloadFileResponse($zipFileName, "{$versionName}.zip");
     }
 
     // Обработка POST-запроса для скачивания отдельного файла или директории

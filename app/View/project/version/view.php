@@ -28,10 +28,8 @@ $versionDescription = htmlspecialchars($version['description'] ?? 'Нет опи
         <p class="project-description-text"><?php echo $versionDescription; ?></p>
     </div>
 
-    <h2 class="section-title-versions">Управление файлами и папками</h2>
-
     <div class="card-panel file-manager-panel">
-
+        <h2 class="section-title-project">Управление файлами и папками</h2>
         <div class="file-manager-actions">
 
             <form action="/project/<?php echo $projectId; ?>/version/<?php echo $versionId; ?>/upload-file"
@@ -108,4 +106,5 @@ $versionDescription = htmlspecialchars($version['description'] ?? 'Нет опи
             <?php endif; ?>
         </div>
     </div>
+    <?php require_once __DIR__ . '/../history.php'; ?>
 </div>
