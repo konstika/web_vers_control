@@ -55,6 +55,18 @@ $versionDescription = htmlspecialchars($version['description'] ?? 'Нет опи
                 <input type="file" name="file[]" id="dir-upload-input" style="display: none;"
                        onchange="this.form.submit();" multiple webkitdirectory directory>
             </form>
+
+            <form action="/project/<?php echo $projectId; ?>/version/<?php echo $versionId; ?>/download-all"
+                  method="POST" class="file-upload-form">
+                <label for="download_all" class="btn btn-primary btn-icon-text">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Скачать архивом
+                </label>
+                <input type="submit" name="version_id" value="<?php echo $versionId; ?>" id="download_all" style="display: none;"
+                       onchange="this.form.submit();">
+            </form>
+
+
         </div>
 
         <div class="file-list-container">

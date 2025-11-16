@@ -35,12 +35,15 @@ $routes = [
     ['GET', '/project/(\d+)/version/new', 'VersionProjectController@new'],
     ['POST', '/project/(\d+)/version/create', 'VersionProjectController@create'],
     ['GET', '/project/(\d+)/version/(\d+)', 'VersionProjectController@show'],
-    ['POST', '/project/(\d+)/version/(\d+)/upload-file', 'VersionProjectController@upload'],
-    ['POST', '/project/(\d+)/version/(\d+)/download-all', 'VersionProjectController@downloadAll'],
     ['GET', '/project/(\d+)/version/(\d+)/edit', 'VersionProjectController@edit'],
     ['POST', '/project/(\d+)/version/(\d+)/update', 'VersionProjectController@update'],
     ['POST', '/project/(\d+)/version/(\d+)/delete', 'VersionProjectController@delete'],
+
     ['POST', '/project/(\d+)/version/(\d+)/delete-file', 'VersionProjectController@deleteFile'],
+    ['POST', '/project/(\d+)/version/(\d+)/upload-file', 'VersionProjectController@upload'],
+    ['POST', '/project/(\d+)/version/(\d+)/download-all', 'VersionProjectController@downloadAll'],
+    ['POST', '/project/(\d+)/version/(\d+)/download-file', 'VersionProjectController@downloadFile'],
+
 ];
 $router = new Core\Router($routes);
 $router->dispatch();

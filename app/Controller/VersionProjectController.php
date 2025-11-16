@@ -1,7 +1,7 @@
 <?php
 
 namespace Controller;
-
+use ZipArchive;
 class VersionProjectController extends Controller
 {
 
@@ -374,6 +374,122 @@ class VersionProjectController extends Controller
             unlink($itemPath);
         }
         header("Location: /project/{$id_project}/version/{$id_version}");
+        exit;
+    }
+
+
+    // Обработка POST-запроса для скачивания всего содержимого версии архивом
+    public function downloadAll(int $id_project, int $id_version)
+    {
+        $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+
+        $versionPath = rtrim($version['path'], DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $versionName = basename($version['name']);
+        $zipFileName = tempnam(sys_get_temp_dir(), 'zip') . '.zip';
+        $zip = new ZipArchive();
+        if ($zip->open($zipFileName, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+            // Ошибка при создании архива
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+
+        // Рекурсивное добавление файлов и папок
+        $this->addFolderToZip($versionPath, $zip, $versionPath);
+        $zip->close();
+
+        // Отправка файла на скачивание
+        $this->downloadFileResponse($zipFileName, "{$versionName}_files.zip");
+    }
+
+    // Обработка POST-запроса для скачивания отдельного файла или директории
+    public function downloadFile(int $id_project, int $id_version)
+    {
+        $this->authenticate();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['item_path'])) {
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+        $itemPath = trim($_POST['item_path']);
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            header("Location: /project/{$id_project}");
+            exit;
+        }
+        $itemName = basename($itemPath);
+        if (is_file($itemPath)) {
+            // Скачивание файла
+            $this->downloadFileResponse($itemPath, $itemName);
+        } elseif (is_dir($itemPath)) {
+            // Скачивание директории архивом
+            $zipFileName = tempnam(sys_get_temp_dir(), 'zip') . '.zip';
+            $zip = new ZipArchive();
+            if ($zip->open($zipFileName, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                header("Location: /project/{$id_project}/version/{$id_version}");
+                exit;
+            }
+            // Имя директории внутри архива
+            $archiveFolderName = basename($itemPath);
+            // Рекурсивное добавление содержимого папки, сохраняя структуру
+            $this->addFolderToZip($itemPath, $zip, dirname($itemPath) . DIRECTORY_SEPARATOR, $archiveFolderName);
+            $zip->close();
+            $this->downloadFileResponse($zipFileName, "{$itemName}.zip");
+        } else {
+            // Файл или директория не найдены
+            header("Location: /project/{$id_project}/version/{$id_version}");
+            exit;
+        }
+    }
+
+    // Вспомогательная функция для рекурсивного добавления содержимого директории в ZipArchive
+    private function addFolderToZip(string $folderPath, ZipArchive $zip, string $basePath, string $zipDir = '')
+    {
+        $files = array_diff(scandir($folderPath), array('.', '..'));
+        $basePathLength = strlen($basePath);
+        foreach ($files as $file) {
+            $fullPath = $folderPath . DIRECTORY_SEPARATOR . $file;
+            $relativePath = ($zipDir ? $zipDir . DIRECTORY_SEPARATOR : '') . substr($fullPath, $basePathLength);
+            $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', $relativePath); // Использование '/' в zip
+            if (is_file($fullPath)) {
+                $zip->addFile($fullPath, $relativePath); // Добавление файла
+            } elseif (is_dir($fullPath)) {
+                $zip->addEmptyDir($relativePath); // Добавление пустой директории
+                $this->addFolderToZip($fullPath, $zip, $basePath, $zipDir); // Рекурсивный вызов
+            }
+        }
+    }
+
+    // Вспомогательная функция для отправки файла на скачивание и удаления временного файла
+    private function downloadFileResponse(string $filePath, string $downloadName)
+    {
+        // Очистка буфера вывода
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+        // Установка HTTP-заголовков для скачивания файла
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . basename($downloadName) . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($filePath));
+        // Считывание и вывод содержимого файла
+        readfile($filePath);
+        // Если файл был временным (например, ZIP), удаляем его
+        if (strpos($filePath, sys_get_temp_dir()) !== false) {
+            unlink($filePath);
+        }
         exit;
     }
 
