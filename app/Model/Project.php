@@ -25,7 +25,7 @@ class Project extends Model
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function createProject(int $userId, array $data): bool {
+    public function createProject(int $userId, array $data) {
         $sql = "INSERT INTO project (created_by, name, path, description) 
                 VALUES (:created_by, :name, :path, :description)";
         $stmt = $this->conn->prepare($sql);
@@ -35,7 +35,10 @@ class Project extends Model
             ':path' => $data['path'] ?? '',
             ':description' => $data['description'] ?? ''
         ]);
-        return $success;
+        if ($success) {
+            return (int)$this->conn->lastInsertId();
+        }
+        return false;
     }
 
     public function updateProject(int $id, array $data): bool {

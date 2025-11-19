@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS history (
     id_history INT AUTO_INCREMENT PRIMARY KEY,
     id_project INT,
     id_version_project INT,
+    name_version_project VARCHAR(255),
     description TEXT,
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -74,6 +74,7 @@ class VersionProjectController extends Controller
             $historyModel->createHistoryRecord(
                 $id_project,
                 $newVersionId,
+                null,
                 "Создана новая версия: '{$name}'.",
                 $userId
             );
@@ -200,6 +201,7 @@ class VersionProjectController extends Controller
             $historyModel->createHistoryRecord(
                 $id_project,
                 $id_version,
+                null,
                 $description,
                 $userId
             );
@@ -219,7 +221,7 @@ class VersionProjectController extends Controller
     }
 
 
-    //Обрабатка POST-запроса для удаления версии
+    //Обработка POST-запроса для удаления версии
     public function delete(int $id_project, int $id_version)
     {
         $userId = $this->authenticate();
@@ -227,35 +229,60 @@ class VersionProjectController extends Controller
             header("Location: /project/{$id_project}");
             exit;
         }
+        $historyModel = $this->model('History');
         $versionModel = $this->model('VersionProject');
         $version = $versionModel->getVersionById($id_version, $id_project);
-        if (!$version) {
-            header("Location: /project/{$id_project}");
-            exit;
-        }
-        $versionPath = $version['path'];
         $versionName = $version['name'];
-
-        //Удаление записи из базы данных
-        if ($versionModel->deleteVersion($id_version, $id_project)) {
-            //Удаление директории
-            if (is_dir($versionPath)) {
-                $this->rmdir_recursive($versionPath);
-            }
-
+        //Удаление зависимостей истории от версий для удаления
+        if($historyModel->deleteVersionId($id_project,  $id_version, $versionName)) {
+            $this->deleteVersionLogic($id_project, $id_version, $userId);
             // Создание записи истории
             $historyModel = $this->model('History');
             $historyModel->createHistoryRecord(
                 $id_project,
-                $id_version,
+                null,
+                $versionName,
                 "Удалена версия: '{$versionName}'.",
                 $userId
             );
-            header("Location: /project/{$id_project}");
-        } else {
-            header("Location: /project/{$id_project}");
         }
+        header("Location: /project/{$id_project}");
         exit;
+    }
+
+    //Удаление всех версий проекта
+    public function deleteProjectVersions(int $id_project): bool
+    {
+        $versionModel = $this->model('VersionProject');
+        $versions = $versionModel->getVersionsByProjectId($id_project);
+        $userId = $this->authenticate();
+        $success = true;
+        foreach ($versions as $version) {
+            $success = $success &&
+                $this->deleteVersionLogic($id_project, $version['id_version_project'], $userId);
+        }
+        return $success;
+    }
+
+    private function deleteVersionLogic(int $id_project, int $id_version, int $userId): bool
+    {
+        $versionModel = $this->model('VersionProject');
+        $version = $versionModel->getVersionById($id_version, $id_project);
+        if (!$version) {
+            return true;
+        }
+        $versionPath = $version['path'];
+        $versionName = $version['name'];
+
+        // Удаление записи из базы данных
+        if ($versionModel->deleteVersion($id_version, $id_project)) {
+            // Удаление директории
+            if (is_dir($versionPath)) {
+                $this->rmdir_recursive($versionPath);
+            }
+            return true;
+        }
+        return false; // Ошибка удаления из БД
     }
 
 
@@ -381,6 +408,7 @@ class VersionProjectController extends Controller
             $historyModel->createHistoryRecord(
                 $id_project,
                 $id_version,
+                null,
                 "Загружено {$uploadedCount} файлов/папок в версию: '{$version['name']}'.",
                 $userId
             );
@@ -443,6 +471,7 @@ class VersionProjectController extends Controller
         $historyModel->createHistoryRecord(
             $id_project,
             $id_version,
+            null,
             $description,
             $userId
         );

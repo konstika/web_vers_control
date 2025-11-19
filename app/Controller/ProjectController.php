@@ -54,6 +54,7 @@ class ProjectController  extends Controller {
             $historyModel->createHistoryRecord(
                 $newProjectId,
                 null,
+                null,
                 "Проект '{$data['name']}' был создан.",
                 $userId
             );
@@ -129,6 +130,7 @@ class ProjectController  extends Controller {
                 $historyModel->createHistoryRecord(
                     $id_project,
                     null,
+                    null,
                     $description,
                     $userId
                 );
@@ -154,11 +156,19 @@ class ProjectController  extends Controller {
             http_response_code(403);
             die("Нет доступа к удалению.");
         }
-        if ($projectModel->deleteProject($id_project)) {
-            header('Location: /');
-        } else {
-            header('Location: /');
+        // Удаление истории проекта
+        $historyModel = $this->model('History');
+        if($historyModel->deleteProjectHistory($id_project)) {
+            // Удаление версий проекта
+            $versionController = new VersionProjectController();
+            $filesDeletionSuccess = $versionController->deleteProjectVersions($id_project);
+            if ($filesDeletionSuccess) {
+                // Удаление данных проекта
+                rmdir($project['path']);
+                $projectModel->deleteProject($id_project);
+            }
         }
+        header('Location: /');
         exit;
     }
 
@@ -177,11 +187,11 @@ class ProjectController  extends Controller {
         $versions = $versionModel->getVersionsByProjectId($id_project);
 
         $historyModel = $this->model('History');
-        $versionHistory = $historyModel->getProjectHistory($id_project);
+        $projectHistory = $historyModel->getProjectHistory($id_project);
         $this->view('project/view', [
             'project' => $project,
             'versions' => $versions,
-            'historyData' => $versionHistory,
+            'historyData' => $projectHistory,
             'isProjectView' => true,
         ]);
     }

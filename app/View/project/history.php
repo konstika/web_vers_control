@@ -14,8 +14,10 @@ $isProjectView = $data['isProjectView'] ?? false;
                     <span class="history-item-description">
                         <?php
                         $context = '';
-                        if ($isProjectView && !empty($entry['version_name'])) {
-                            $context = "<span class=\"history-item-context\">Версия \"".htmlspecialchars($entry['version_name'])."\":</span>";
+                        if ($isProjectView && (!empty($entry['version_name'])) || (!empty($entry['name_version_project']))) {
+                            if(!empty($entry['name_version_project'])){$versionName = $entry['name_version_project'];}
+                            else{$versionName = $entry['version_name'];}
+                            $context = "<span class=\"history-item-context\">Версия \"".htmlspecialchars($versionName)."\":</span>";
                         }
                         echo $context;
                         echo htmlspecialchars($entry['description'] ?? 'Действие без описания');
