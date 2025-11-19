@@ -1,17 +1,10 @@
 <?php
 namespace Model;
 
-use Core\Database;
 use \PDO;
 
-class History
+class History extends Model
 {
-    private $conn;
-
-    public function __construct() {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
     //создание новую запись в таблице history.
     public function createHistoryRecord(int $projectId, int $versionId = null, string $description, int $userId): bool
     {

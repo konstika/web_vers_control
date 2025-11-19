@@ -2,16 +2,9 @@
 
 namespace Model;
 
-use Core\Database;
 use PDO;
 
-class User {
-    private $conn;
-
-    public function __construct() {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
+class User extends Model{
     // Поиск пользователя по логину
     public function findByLogin($login) {
         $stmt = $this->conn->prepare("SELECT * FROM user WHERE login = ?");

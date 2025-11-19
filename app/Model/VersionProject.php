@@ -1,17 +1,10 @@
 <?php
 namespace Model;
 
-use Core\Database;
 use \PDO;
 
-class VersionProject
+class VersionProject extends Model
 {
-    private $conn;
-
-    public function __construct() {
-        $this->conn = Database::getInstance()->getConnection();
-    }
-
     //Получение всех версий проекта
     public function getVersionsByProjectId(int $projectId): array
     {

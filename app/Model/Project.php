@@ -1,15 +1,9 @@
 <?php
 namespace Model;
-use Core\Database;
+
 use \PDO;
-class Project
+class Project extends Model
 {
-    private $conn;
-
-    public function __construct() {
-       $this->conn = Database::getInstance()->getConnection();
-    }
-
     public function getProjectsByUserId(int $userId): array {
         $sql = "SELECT id_project, name, description, created_at
                 FROM project
