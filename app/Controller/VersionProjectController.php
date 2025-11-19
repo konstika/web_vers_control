@@ -54,7 +54,7 @@ class VersionProjectController extends Controller
         }
 
         $projectPath = $project['path'];
-        $versionPath = $projectPath . uniqid();
+        $versionPath = $projectPath .'/'. uniqid();
         if (!mkdir($versionPath, 0777, true)) {
             $error = "Не удалось создать директорию для новой версии.";
             $this->view('project/version/new', compact('id_project', 'project', 'name', 'description', 'error'));
@@ -367,8 +367,6 @@ class VersionProjectController extends Controller
         $filesArray = $this->rearrangeFilesArray($_FILES['file']);
         $uploadedCount = 0;
         $errorCount = 0;
-        $firstItemName = '';
-        $firstItemType = '';
         $failedFiles = [];
         foreach ($filesArray as $file) {
             // Пропускаем элемент, если загрузка была неудачной (например, слишком большой файл)
@@ -380,7 +378,7 @@ class VersionProjectController extends Controller
             // Имя файла (без пути)
             $fileName = basename($relativePath);
             // Директория для размещения файла
-            $targetDir = dirname($baseUploadPath . $relativePath);
+            $targetDir = dirname($baseUploadPath .'/'. $relativePath);
             // Создание директории, если она не существует
             if (!is_dir($targetDir)) {
                 $itemType = 'folder';
